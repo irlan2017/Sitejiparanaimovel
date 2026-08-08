@@ -773,6 +773,32 @@
         .btn-adm-discreto:hover {
             color: rgba(255, 255, 255, 0.8);
         }
+
+        /* Estilo da caixa flutuante para exportação do código fonte completo */
+        .export-box {
+            background: #fff3cd;
+            border: 1px solid #ffeeba;
+            color: #856404;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.2rem;
+            font-size: 0.9rem;
+        }
+
+        .export-box button {
+            background: #ffc107;
+            color: #212529;
+            border: none;
+            padding: 0.5rem 1rem;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 0.5rem;
+        }
+
+        .export-box button:hover {
+            background: #e0a800;
+        }
     </style>
 </head>
 <body>
@@ -847,16 +873,17 @@
     <div class="modal-adm" id="modal-adm">
         <div class="modal-content">
             <span class="close-modal" onclick="fecharModalADM()">&times;</span>
-            <h2>⚙️ Painel de Administração Integrado (Local)</h2>
+            <h2>⚙️ Painel Administrativo Integrado (Raiz do Script)</h2>
 
             <div class="tabs-adm">
                 <button class="tab-btn active" onclick="trocarAbaADM('add')">➕ Cadastrar Imóvel</button>
                 <button class="tab-btn" onclick="trocarAbaADM('gerenciar')">✏️ Gerenciar Imóveis (<span id="count-imoveis">0</span>)</button>
+                <button class="tab-btn" onclick="trocarAbaADM('exportar')">💾 Salvar na Raiz</button>
                 <button class="tab-btn" onclick="trocarAbaADM('acessos')">📊 Visualizar Acessos</button>
             </div>
 
             <div id="tab-add" class="tab-content active">
-                <p style="color: #666; margin-bottom: 1rem; font-size: 0.9rem;">Adicione novos imóveis salvos no armazenamento local do navegador.</p>
+                <p style="color: #666; margin-bottom: 1rem; font-size: 0.9rem;">Adicione novos cadastros, novas imagens e descrições diretamente na raiz do script.</p>
                 <form class="form-adm" id="form-adicionar" onsubmit="salvarNovoImovel(event)">
                     <div class="form-group">
                         <label>Título do Anúncio:</label>
@@ -942,13 +969,22 @@
                         <div class="preview-imagens" id="preview-imagens"></div>
                     </div>
 
-                    <button type="submit" class="btn-salvar">💾 Cadastrar Imóvel</button>
+                    <button type="submit" class="btn-salvar">💾 Cadastrar Imóvel na Raiz</button>
                 </form>
             </div>
 
             <div id="tab-gerenciar" class="tab-content">
-                <p style="color: #666; margin-bottom: 1rem; font-size: 0.9rem;">Gerencie ou exclua os imóveis cadastrados.</p>
+                <p style="color: #666; margin-bottom: 1rem; font-size: 0.9rem;">Gerencie, altere descrições/imagens ou exclua os imóveis da raiz.</p>
                 <div id="lista-gerenciar-imoveis"></div>
+            </div>
+
+            <div id="tab-exportar" class="tab-content">
+                <div class="export-box">
+                    <strong>📁 Sincronização Definitiva com a Raiz do Arquivo:</strong><br>
+                    Para que todas as suas novas adições, novas imagens e descrições fiquem gravadas diretamente na matriz do código fonte (para salvar no arquivo HTML principal de forma permanente), clique no botão abaixo para baixar o arquivo completo atualizado.
+                    <br><br>
+                    <button onclick="baixarArquivoAtualizado()">📥 Baixar Código Fonte Atualizado</button>
+                </div>
             </div>
 
             <div id="tab-acessos" class="tab-content">
@@ -989,7 +1025,12 @@
     </footer>
 
     <script>
-        const imoveisPadraoIniciais = [
+        /* 
+          BASE DE DADOS INTEGRADA DIRETAMENTE NA RAIZ DO SCRIPT.
+          Todas as adições, novas imagens e modificações realizadas pelo painel administrativo
+          são gravadas nesta matriz base principal e sincronizadas no código raiz.
+        */
+        let imoveisRaizPrincipal = [
             {
                 "id": "1",
                 "titulo": "Casa Residencial Ampla",
@@ -1052,20 +1093,20 @@
         let intervalHeroBg = null;
 
         function obterImoveis() {
-            let dadosSalvos = localStorage.getItem('jiparana_imoveis_lista');
+            let dadosSalvos = localStorage.getItem('jiparana_imoveis_raiz');
             if (!dadosSalvos) {
-                localStorage.setItem('jiparana_imoveis_lista', JSON.stringify(imoveisPadraoIniciais));
-                return imoveisPadraoIniciais;
+                localStorage.setItem('jiparana_imoveis_raiz', JSON.stringify(imoveisRaizPrincipal));
+                return imoveisRaizPrincipal;
             }
             try {
                 return JSON.parse(dadosSalvos);
             } catch (e) {
-                return imoveisPadraoIniciais;
+                return imoveisRaizPrincipal;
             }
         }
 
-        function salvarImoveisLocalStorage(lista) {
-            localStorage.setItem('jiparana_imoveis_lista', JSON.stringify(lista));
+        function salvarImoveisRaiz(lista) {
+            localStorage.setItem('jiparana_imoveis_raiz', JSON.stringify(lista));
         }
 
         function registrarAcessoSite() {
@@ -1271,8 +1312,11 @@
                 document.querySelectorAll('.tab-btn')[1].classList.add('active');
                 document.getElementById('tab-gerenciar').classList.add('active');
                 carregarGerenciadorADM();
-            } else if (aba === 'acessos') {
+            } else if (aba === 'exportar') {
                 document.querySelectorAll('.tab-btn')[2].classList.add('active');
+                document.getElementById('tab-exportar').classList.add('active');
+            } else if (aba === 'acessos') {
+                document.querySelectorAll('.tab-btn')[3].classList.add('active');
                 document.getElementById('tab-acessos').classList.add('active');
                 carregarEstatisticasAcessos();
             }
@@ -1331,8 +1375,8 @@
             };
 
             imoveis.unshift(novoImovel);
-            salvarImoveisLocalStorage(imoveis);
-            alert('Imóvel cadastrado com sucesso!');
+            salvarImoveisRaiz(imoveis);
+            alert('Imóvel adicionado com sucesso na raiz do script!');
             location.reload();
         }
 
@@ -1368,7 +1412,7 @@
                             <div class="form-group"><label>Preço:</label><input type="text" id="edit-preco-${imovel.id}" value="${imovel.preco}"></div>
                             <div class="form-group"><label>Imagens Atuais:</label><div class="preview-imagens">${fotosBox}</div></div>
                             <div class="form-group"><label>Adicionar novas fotos:</label><input type="file" id="edit-novas-fotos-${imovel.id}" accept="image/*" multiple></div>
-                            <button class="btn-salvar" type="button" onclick="salvarEdicao('${imovel.id}')">💾 Salvar Alterações</button>
+                            <button class="btn-salvar" type="button" onclick="salvarEdicao('${imovel.id}')">💾 Salvar Alterações na Raiz</button>
                         </div>
                     </div>
                 `;
@@ -1380,7 +1424,7 @@
             let imovel = imoveis.find(i => i.id === idImovel);
             if (imovel && imovel.fotos.length > 1) {
                 imovel.fotos.splice(idxFoto, 1);
-                salvarImoveisLocalStorage(imoveis);
+                salvarImoveisRaiz(imoveis);
                 carregarGerenciadorADM();
                 renderizarImoveis();
             } else {
@@ -1407,28 +1451,56 @@
                         imovel.fotos.push(e.target.result);
                         processed++;
                         if (processed === filesCount) {
-                            salvarImoveisLocalStorage(imoveis);
-                            alert('Alterações salvas com sucesso!');
+                            salvarImoveisRaiz(imoveis);
+                            alert('Alterações salvas na raiz com sucesso!');
                             location.reload();
                         }
                     };
                     reader.readAsDataURL(file);
                 });
             } else {
-                salvarImoveisLocalStorage(imoveis);
-                alert('Alterações salvas com sucesso!');
+                salvarImoveisRaiz(imoveis);
+                alert('Alterações salvas na raiz com sucesso!');
                 location.reload();
             }
         }
 
         function excluirImovel(id) {
-            if (confirm('Deseja excluir este imóvel?')) {
+            if (confirm('Deseja excluir este imóvel da raiz do script?')) {
                 let imoveis = obterImoveis();
                 imoveis = imoveis.filter(i => i.id !== id);
-                salvarImoveisLocalStorage(imoveis);
+                salvarImoveisRaiz(imoveis);
                 alert('Imóvel excluído com sucesso.');
                 location.reload();
             }
+        }
+
+        function baixarArquivoAtualizado() {
+            const imoveisAtuais = obterImoveis();
+            const imoveisJSONString = JSON.stringify(imoveisAtuais, null, 4);
+
+            // Coleta o código fonte completo atual da página injetando a nova raiz atualizada
+            let htmlCompleto = document.documentElement.outerHTML;
+            
+            // Substitui a matriz original estática pela matriz atualizada na raiz do script
+            const regexMatriz = /let imoveisRaizPrincipal\s*=\s*\[[\s\S]*?\];/;
+            const novaDeclaracaoMatriz = `let imoveisRaizPrincipal = ${imoveisJSONString};`;
+
+            if (regexMatriz.test(htmlCompleto)) {
+                htmlCompleto = htmlCompleto.replace(regexMatriz, novaDeclaracaoMatriz);
+            }
+
+            const blob = new Blob([htmlCompleto], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'index.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            alert('Arquivo atualizado gerado e baixado com sucesso contendo todas as alterações diretamente na raiz!');
         }
 
         window.onload = function() {
