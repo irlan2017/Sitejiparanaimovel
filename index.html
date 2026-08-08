@@ -918,6 +918,7 @@
                 <button class="tab-btn active" onclick="trocarAbaADM('add')">➕ Cadastrar Imóvel</button>
                 <button class="tab-btn" onclick="trocarAbaADM('gerenciar')">✏️ Gerenciar Imóveis (<span id="count-imoveis">0</span>)</button>
                 <button class="tab-btn" onclick="trocarAbaADM('acessos')">📊 Visualizar Acessos</button>
+                <button class="tab-btn" onclick="trocarAbaADM('exportar')">💾 Salvar Código na Raiz</button>
             </div>
 
             <!-- Aba Cadastrar Novo -->
@@ -1053,6 +1054,12 @@
                 </div>
             </div>
 
+            <!-- Aba Exportar para Raiz -->
+            <div id="tab-exportar" class="tab-content">
+                <p style="color: #666; margin-bottom: 1.2rem; font-size: 0.9rem;">Para que os novos cadastros e imagens fiquem salvos permanentemente <strong>direto na raiz do script</strong> (no arquivo principal do site a ser hospedado), clique no botão abaixo. Isso gerará/atualizará o arquivo <code>index.html</code> completo com todos os seus imóveis embutidos.</p>
+                <button type="button" class="btn-salvar" onclick="baixarArquivoRaiz()">📥 Baixar index.html atualizado para a Raiz</button>
+            </div>
+
         </div>
     </div>
 
@@ -1070,7 +1077,15 @@
 
     <!-- Scripts da Aplicação -->
     <script>
-        const imoveisPadrao = [
+        /* 
+           ATENÇÃO PARA HOSPEDAGEM NA RAIZ:
+           A constante abaixo armazena a lista de imóveis que acompanha o script na raiz.
+           Sempre que você cadastrar novos imóveis ou alterar fotos pelo painel administrativo,
+           você pode ir na aba "Salvar Código na Raiz" e baixar o arquivo "index.html" atualizado
+           para substituir o arquivo na hospedagem do seu site. Assim, novos acessos de qualquer
+           dispositivo exibirão perfeitamente todos os imóveis salvos de forma permanente!
+        */
+        const imoveisRaizFixos = [
             {
                 id: "1",
                 titulo: "Casa Residencial Ampla",
@@ -1145,12 +1160,10 @@
             
             if (!historicoAcessos.diario) historicoAcessos.diario = {};
 
-            // Evitar contagem duplicada na mesma aba de sessão do navegador
             const sessaoAtiva = sessionStorage.getItem('jiparana_sessao_contabilizada');
             if (!sessaoAtiva) {
                 sessionStorage.setItem('jiparana_sessao_contabilizada', 'true');
                 
-                // Incrementar diário
                 if (!historicoAcessos.diario[dataChave]) {
                     historicoAcessos.diario[dataChave] = 0;
                 }
@@ -1171,11 +1184,8 @@
             const prefixoMesChave = `${ano}-${mes}`;
 
             const diarioObj = historicoAcessos.diario || {};
-
-            // Total Diário de Hoje
             const totalHoje = diarioObj[dataHojeChave] || 0;
 
-            // Fechamento do Mês (Soma de todos os dias do mês atual)
             let totalMes = 0;
             for (const [dataStr, qtd] of Object.entries(diarioObj)) {
                 if (dataStr.startsWith(prefixoMesChave)) {
@@ -1183,14 +1193,12 @@
                 }
             }
 
-            // Atualizar valores nos cards da tela
             const elHoje = document.getElementById('stat-hoje');
             const elMes = document.getElementById('stat-mes');
 
             if (elHoje) elHoje.innerText = totalHoje.toLocaleString('pt-BR');
             if (elMes) elMes.innerText = totalMes.toLocaleString('pt-BR');
 
-            // Popular tabela de histórico diário
             const tbody = document.getElementById('stats-tabela-corpo');
             if (tbody) {
                 tbody.innerHTML = '';
@@ -1222,7 +1230,6 @@
             const btn = document.getElementById('btn-toggle-hino');
             if (!audio || !btn) return;
             
-            // Definir o volume para 10% (0.1)
             audio.volume = 0.1;
 
             const promise = audio.play();
@@ -1249,7 +1256,6 @@
             const btn = document.getElementById('btn-toggle-hino');
             if (!audio || !btn) return;
 
-            // Garantir que o volume esteja em 10% ao dar play
             audio.volume = 0.1;
 
             if (audio.paused) {
@@ -1264,13 +1270,13 @@
         function obterImoveis() {
             const salvas = localStorage.getItem('jiparana_imoveis_data');
             if (!salvas) {
-                localStorage.setItem('jiparana_imoveis_data', JSON.stringify(imoveisPadrao));
-                return imoveisPadrao;
+                localStorage.setItem('jiparana_imoveis_data', JSON.stringify(imoveisRaizFixos));
+                return imoveisRaizFixos;
             }
             try {
                 return JSON.parse(salvas);
             } catch (e) {
-                return imoveisPadrao;
+                return imoveisRaizFixos;
             }
         }
 
@@ -1504,6 +1510,10 @@
                 const tabAcessos = document.getElementById('tab-acessos');
                 if (tabAcessos) tabAcessos.classList.add('active');
                 carregarEstatisticasAcessos();
+            } else if (aba === 'exportar') {
+                if (tabBtns[3]) tabBtns[3].classList.add('active');
+                const tabExportar = document.getElementById('tab-exportar');
+                if (tabExportar) tabExportar.classList.add('active');
             }
         }
 
@@ -1909,6 +1919,35 @@
                 iniciarHeroBgSlideshow();
                 carregarGerenciadorADM();
             }
+        }
+
+        /* Função que gera o arquivo index.html atualizado contendo os cadastros atuais embutidos na raiz do script */
+        function baixarArquivoRaiz() {
+            const imoveisAtuais = obterImoveis();
+            
+            // Pega todo o código HTML da página atual
+            let htmlCompleto = document.documentElement.outerHTML;
+
+            // Substitui a constante antiga no código pelo array atualizado de imóveis
+            const regexConst = /const imoveisRaizFixos = \[[\s\S]*?\];/;
+            const novoArrayStr = `const imoveisRaizFixos = ${JSON.stringify(imoveisAtuais, null, 4)};`;
+
+            if (regexConst.test(htmlCompleto)) {
+                htmlCompleto = htmlCompleto.replace(regexConst, novoArrayStr);
+            }
+
+            // Cria o blob e dispara o download automático do index.html para substituir na raiz do site
+            const blob = new Blob(["<!DOCTYPE html>\n" + htmlCompleto], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'index.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            alert('Arquivo index.html gerado e baixado com sucesso!\n\nBasta substituir este arquivo na raiz do seu servidor/hospedagem para que todos os novos cadastros e imagens apareçam automaticamente para qualquer visitante em qualquer dispositivo.');
         }
 
         window.onclick = function(event) {
